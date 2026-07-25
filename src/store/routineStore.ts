@@ -136,22 +136,42 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
   },
 
   getCurrentTask: () => {
-    const state = get();
-    const now = new Date();
-    const currentTimeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const state = get();
 
-    return state.routine.find((task) => {
-      const [startH, startM] = task.startTime.split(":").map(Number);
-      const [endH, endM] = task.endTime.split(":").map(Number);
-      const [currH, currM] = currentTimeStr.split(":").map(Number);
+  const now = new Date();
+  const currentMinutes =
+    now.getHours() * 60 +
+    now.getMinutes();
 
-      const startInMinutes = startH * 60 + startM;
-      const endInMinutes = endH * 60 + endM;
-      const currentInMinutes = currH * 60 + currM;
+  return (
+    state.routine.find((task) => {
+      const [startH, startM] =
+        task.startTime.split(":").map(Number);
 
-      return currentInMinutes >= startInMinutes && currentInMinutes < endInMinutes;
-    }) || null;
-  },
+      const [endH, endM] =
+        task.endTime.split(":").map(Number);
+
+      const startMinutes =
+        startH * 60 + startM;
+
+      const endMinutes =
+        endH * 60 + endM;
+
+      // Sleep Task
+      if (endMinutes < startMinutes) {
+        return (
+          currentMinutes >= startMinutes ||
+          currentMinutes < endMinutes
+        );
+      }
+
+      return (
+        currentMinutes >= startMinutes &&
+        currentMinutes < endMinutes
+      );
+    }) || null
+  );
+},
 
   getNextTask: () => {
     const state = get();
