@@ -1,7 +1,7 @@
 "use client";
 
 import { useRoutineStore } from "@/store/routineStore";
-import { TrendingUp, Calendar, Clock, Zap } from "lucide-react";
+import { TrendingUp, Clock, Zap } from "lucide-react";
 
 export function Progress() {
   const routine = useRoutineStore((state) => state.routine);
@@ -21,20 +21,20 @@ export function Progress() {
   const getStreak = (): number => {
     let streak = 0;
     const date = new Date();
-    
+
     for (let i = 0; i < 30; i++) {
       const dateStr = date.toISOString().split("T")[0];
       const progress = useRoutineStore.getState().getDailyProgress(dateStr);
-      
+
       if (progress && progress.completedTasks === progress.totalTasks) {
         streak++;
       } else if (i > 0) {
         break;
       }
-      
+
       date.setDate(date.getDate() - 1);
     }
-    
+
     return streak;
   };
 
@@ -45,37 +45,34 @@ export function Progress() {
 
   return (
     <div className="space-y-6">
-      {/* Today's Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Total Progress */}
-        <div className="glass-effect p-6 rounded-2xl">
+        <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase">कुल प्रगति</p>
-            <TrendingUp size={20} className="text-blue-500" />
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase">Total progress</p>
+            <TrendingUp size={20} className="text-blue-600" />
           </div>
-          <p className="text-5xl font-bold text-blue-500 mb-2">{progressPercent}%</p>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+          <p className="text-5xl font-bold text-blue-600 mb-2">{progressPercent}%</p>
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
             <div
               className="bg-blue-500 h-full rounded-full transition-all"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            {dailyProgress?.completedTasks || 0} / {routine.length} कार्य पूरे
+          <p className="text-xs text-slate-700 dark:text-slate-400 mt-2">
+            {dailyProgress?.completedTasks || 0} / {routine.length} tasks completed
           </p>
         </div>
 
-        {/* Study Hours */}
-        <div className="glass-effect p-6 rounded-2xl">
+        <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase">पढ़ाई का समय</p>
-            <Clock size={20} className="text-orange-500" />
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase">Study time</p>
+            <Clock size={20} className="text-orange-600" />
           </div>
-          <p className="text-5xl font-bold text-orange-500 mb-2">{todayStudyHours}h</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            लक्ष्य: 8 घंटे
+          <p className="text-5xl font-bold text-orange-600 mb-2">{todayStudyHours}h</p>
+          <p className="text-xs text-slate-700 dark:text-slate-400">
+            Goal: 8 hours
           </p>
-          <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div className="mt-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
             <div
               className="bg-orange-500 h-full rounded-full transition-all"
               style={{ width: `${Math.min((todayStudyHours / 8) * 100, 100)}%` }}
@@ -83,41 +80,38 @@ export function Progress() {
           </div>
         </div>
 
-        {/* Study Tasks */}
-        <div className="glass-effect p-6 rounded-2xl">
+        <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase">पढ़ाई के कार्य</p>
-            <Zap size={20} className="text-yellow-500" />
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase">Study tasks</p>
+            <Zap size={20} className="text-yellow-600" />
           </div>
-          <p className="text-5xl font-bold text-yellow-500 mb-2">{completedStudyTasks}/{studyTasks.length}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            पढ़ाई के कार्य पूरे किए
+          <p className="text-5xl font-bold text-yellow-600 mb-2">{completedStudyTasks}/{studyTasks.length}</p>
+          <p className="text-xs text-slate-700 dark:text-slate-400">
+            Study tasks completed
           </p>
         </div>
 
-        {/* Streak */}
-        <div className="glass-effect p-6 rounded-2xl">
+        <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase">स्ट्रीक 🔥</p>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase">Streak 🔥</p>
             <span className="text-3xl">🔥</span>
           </div>
-          <p className="text-5xl font-bold text-red-500 mb-2">{streak}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            लगातार दिन
+          <p className="text-5xl font-bold text-red-600 mb-2">{streak}</p>
+          <p className="text-xs text-slate-700 dark:text-slate-400">
+            consecutive days
           </p>
         </div>
       </div>
 
-      {/* Breakdown by Category */}
-      <div className="glass-effect p-6 rounded-2xl">
-        <p className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">कार्यों का विभाजन</p>
-        
+      <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
+        <p className="text-lg font-semibold mb-4 text-slate-900 dark:text-slate-100">Task breakdown</p>
+
         <div className="space-y-4">
           {[
-            { category: "study", label: "📖 पढ़ाई", color: "blue" },
-            { category: "break", label: "☕ ब्रेक", color: "green" },
-            { category: "exercise", label: "💪 व्यायाम", color: "red" },
-            { category: "other", label: "🔔 अन्य", color: "gray" },
+            { category: "study", label: "📖 Study", color: "blue" },
+            { category: "break", label: "☕ Break", color: "green" },
+            { category: "exercise", label: "💪 Exercise", color: "red" },
+            { category: "other", label: "🔔 Other", color: "gray" },
           ].map(({ category, label, color }) => {
             const categoryTasks = routine.filter((t) => t.category === category);
             const completedInCategory = dailyProgress?.tasks.filter(
@@ -135,12 +129,12 @@ export function Progress() {
             return (
               <div key={category}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-gray-700 dark:text-gray-300">{label}</span>
-                  <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                  <span className="font-medium text-slate-800 dark:text-slate-300">{label}</span>
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-400">
                     {completedInCategory}/{categoryTasks.length} ({percent}%)
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
                   <div
                     className={`${colorMap[color as keyof typeof colorMap]} h-full rounded-full transition-all`}
                     style={{ width: `${percent}%` }}
@@ -152,14 +146,13 @@ export function Progress() {
         </div>
       </div>
 
-      {/* Tips */}
-      <div className="glass-effect p-6 rounded-2xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
-        <p className="font-semibold text-blue-900 dark:text-blue-100 mb-3">💡 आज के लिए सुझाव</p>
+      <div className="glass-effect p-6 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm dark:bg-slate-950 dark:border-slate-700">
+        <p className="font-semibold text-blue-900 dark:text-blue-100 mb-3">💡 Tips for today</p>
         <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
-          <li>✓ हर रोज़ 100% प्रगति का लक्ष्य रखो</li>
-          <li>✓ पढ़ाई के 8 घंटे पूरे करने की कोशिश करो</li>
-          <li>✓ अपनी स्ट्रीक को तोड़ो मत! 🔥</li>
-          <li>✓ नियमित रूप से इसे चेक करो</li>
+          <li>✓ Aim for 100% progress every day</li>
+          <li>✓ Try to complete 8 hours of study</li>
+          <li>✓ Don’t break your streak! 🔥</li>
+          <li>✓ Check in regularly</li>
         </ul>
       </div>
     </div>

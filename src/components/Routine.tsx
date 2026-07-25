@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRoutineStore } from "@/store/routineStore";
 import { CheckCircle2, Circle, Clock, Target } from "lucide-react";
 import { motion } from "framer-motion";
@@ -13,11 +13,9 @@ export function Routine() {
   const toggleTaskCompletion = useRoutineStore((state) => state.toggleTaskCompletion);
   const dailyProgress = useRoutineStore((state) => state.getDailyProgress(selectedDate));
 
-  // Get today's date for display
   const today = new Date().toISOString().split("T")[0];
   const isToday = selectedDate === today;
 
-  // Group tasks by category
   const groupedTasks = routine.reduce(
     (acc, task) => {
       if (!acc[task.category]) {
@@ -30,10 +28,10 @@ export function Routine() {
   );
 
   const categoryLabels = {
-    study: { label: "📖 पढ़ाई", color: "blue" },
-    break: { label: "☕ ब्रेक", color: "green" },
-    exercise: { label: "💪 व्यायाम", color: "red" },
-    other: { label: "🔔 अन्य", color: "gray" },
+    study: { label: "📖 Study", color: "blue" },
+    break: { label: "☕ Break", color: "green" },
+    exercise: { label: "💪 Exercise", color: "red" },
+    other: { label: "🔔 Other", color: "gray" },
   };
 
   const getTaskStatus = (taskId: string) => {
@@ -53,48 +51,46 @@ export function Routine() {
 
   return (
     <div className="space-y-6">
-      {/* Date Selector */}
-      <div className="glass-effect p-6 rounded-2xl">
+      <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
         <div className="flex items-center justify-between gap-4">
           <button
             onClick={() => handleDateChange(-1)}
-            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
+            className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition"
           >
             ◀
           </button>
 
           <div className="flex-1 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400 uppercase font-semibold mb-1">तारीख</p>
-            <p className="text-2xl font-bold">
-              {new Date(selectedDate).toLocaleDateString("hi-IN", {
+            <p className="text-sm text-slate-700 dark:text-slate-300 uppercase font-semibold mb-1">Date</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {new Date(selectedDate).toLocaleDateString("en-US", {
                 weekday: "long",
                 day: "numeric",
                 month: "short",
               })}
             </p>
-            {isToday && <p className="text-xs text-blue-500 font-semibold mt-1">आज</p>}
+            {isToday && <p className="text-xs text-blue-500 font-semibold mt-1">Today</p>}
           </div>
 
           <button
             onClick={() => handleDateChange(1)}
-            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
+            className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition"
           >
             ▶
           </button>
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="glass-effect p-6 rounded-2xl">
+      <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 uppercase font-semibold mb-1">कुल प्रगति</p>
-            <p className="text-3xl font-bold">
+            <p className="text-sm text-slate-700 dark:text-slate-300 uppercase font-semibold mb-1">Total progress</p>
+            <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">
               {dailyProgress?.completedTasks || 0} / {routine.length}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-600 dark:text-gray-400 uppercase font-semibold mb-1">प्रतिशत</p>
+            <p className="text-sm text-slate-700 dark:text-slate-300 uppercase font-semibold mb-1">Percent</p>
             <p className="text-3xl font-bold text-blue-500">
               {dailyProgress ? Math.round((dailyProgress.completedTasks / routine.length) * 100) : 0}%
             </p>
@@ -102,15 +98,14 @@ export function Routine() {
         </div>
       </div>
 
-      {/* Tasks by Category */}
       <div className="space-y-6">
         {Object.entries(groupedTasks).map(([category, tasks]) => (
           <div key={category}>
             <div className="flex items-center gap-2 mb-3">
-              <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+              <p className="text-lg font-semibold text-slate-800 dark:text-slate-200">
                 {categoryLabels[category as keyof typeof categoryLabels].label}
               </p>
-              <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">
+              <span className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded-full">
                 {tasks.length}
               </span>
             </div>
@@ -128,7 +123,7 @@ export function Routine() {
                     transition={{ delay: index * 0.05 }}
                     onClick={() => handleToggleTask(task.id)}
                     className={`task-item cursor-pointer ${
-                      isCurrent ? "active" : isCompleted ? "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600" : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      isCurrent ? "active" : isCompleted ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600" : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700"
                     }`}
                   >
                     <div className="flex items-start gap-4">
@@ -136,23 +131,23 @@ export function Routine() {
                         {isCompleted ? (
                           <CheckCircle2 size={24} className="text-green-500" />
                         ) : (
-                          <Circle size={24} className="text-gray-400 dark:text-gray-600" />
+                          <Circle size={24} className="text-slate-400 dark:text-slate-500" />
                         )}
                       </div>
 
                       <div className="flex-1">
-                        <p className={`font-semibold text-lg ${isCompleted ? "line-through text-gray-500" : "text-gray-800 dark:text-gray-100"}`}>
+                        <p className={`font-semibold text-lg ${isCompleted ? "line-through text-slate-500" : "text-slate-800 dark:text-slate-100"}`}>
                           {task.title}
                         </p>
 
-                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-slate-700 dark:text-slate-400">
                           <div className="flex items-center gap-1">
                             <Clock size={16} />
                             <span className="font-mono">{task.startTime} - {task.endTime}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Target size={16} />
-                            <span>{task.duration} मिनट</span>
+                            <span>{task.duration} minutes</span>
                           </div>
                         </div>
                       </div>
@@ -160,7 +155,7 @@ export function Routine() {
                       {isCurrent && (
                         <div className="flex-shrink-0">
                           <span className="inline-block bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse">
-                            चल रहा है
+                            In progress
                           </span>
                         </div>
                       )}
@@ -173,9 +168,8 @@ export function Routine() {
         ))}
       </div>
 
-      {/* Footer Note */}
-      <div className="glass-effect p-4 rounded-xl text-center text-sm text-gray-600 dark:text-gray-400">
-        <p>💡 किसी भी कार्य को दबाओ/क्लिक करो उसे पूरा करने के लिए</p>
+      <div className="glass-effect p-4 rounded-xl text-center text-sm text-slate-700 dark:text-slate-300">
+        <p>💡 Tap or click any task to mark it complete</p>
       </div>
     </div>
   );

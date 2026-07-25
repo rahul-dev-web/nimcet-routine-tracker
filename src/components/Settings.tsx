@@ -28,59 +28,54 @@ export function Settings() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      {/* Profile Settings */}
-      <div className="glass-effect p-6 rounded-2xl">
-        <p className="text-lg font-semibold mb-6 text-gray-800 dark:text-gray-100">👤 प्रोफाइल</p>
+      <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
+        <p className="text-lg font-semibold mb-6 text-slate-900 dark:text-slate-100">👤 Profile</p>
 
         <div className="space-y-5">
-          {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              नाम
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Name
             </label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          {/* Wake Up Time */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                सुबह उठने का समय
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Wake-up time
               </label>
               <input
                 type="time"
                 name="wakeUpTime"
                 value={formData.wakeUpTime}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            {/* Sleep Time */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                सोने का समय
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Sleep time
               </label>
               <input
                 type="time"
                 name="sleepTime"
                 value={formData.sleepTime}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
-          {/* Study Target */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              दैनिक पढ़ाई का लक्ष्य (घंटे)
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Daily study target (hours)
             </label>
             <input
               type="number"
@@ -89,29 +84,27 @@ export function Settings() {
               onChange={handleInputChange}
               min="1"
               max="16"
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          {/* Theme */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              थीम
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Theme
             </label>
             <select
               name="theme"
               value={formData.theme}
               onChange={handleInputChange}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="light">☀️ हल्का</option>
-              <option value="dark">🌙 गहरा</option>
-              <option value="system">🖥️ सिस्टम</option>
+              <option value="light">☀️ Light</option>
+              <option value="dark">🌙 Dark</option>
+              <option value="system">🖥️ System</option>
             </select>
           </div>
         </div>
 
-        {/* Save Button */}
         <button
           onClick={handleSave}
           className={`w-full mt-6 px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
@@ -121,44 +114,42 @@ export function Settings() {
           }`}
         >
           <Save size={20} />
-          {saved ? "✓ सहेजा गया!" : "सेटिंग्स सहेजो"}
+          {saved ? "✓ Saved!" : "Save settings"}
         </button>
       </div>
 
-      {/* Quick Info */}
-      <div className="glass-effect p-6 rounded-2xl">
-        <p className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">ℹ️ जानकारी</p>
-        
-        <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+      <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
+        <p className="text-lg font-semibold mb-4 text-slate-900 dark:text-slate-100">ℹ️ Information</p>
+
+        <div className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
           <p>
-            <strong>संस्करण:</strong> NIMCET Routine Tracker v1.0.0
+            <strong>Version:</strong> NIMCET Routine Tracker v1.0.0
           </p>
           <p>
-            <strong>स्टोरेज:</strong> सभी डेटा स्थानीय रूप से आपके डिवाइस पर संरक्षित है
+            <strong>Storage:</strong> All data is stored locally on your device
           </p>
           <p>
-            <strong>अपडेट:</strong> Phase 1A (MVP) पूर्ण - अगले Phase के लिए तैयार
+            <strong>Update:</strong> Phase 1A (MVP) complete and ready for the next phase
           </p>
-          <p className="pt-3 border-t border-gray-300 dark:border-gray-600">
-            🚀 आपके NIMCET लक्ष्य को प्राप्त करने के लिए शुभकामनाएं!
+          <p className="pt-3 border-t border-slate-300 dark:border-slate-600">
+            🚀 Wishing you the best as you work toward your NIMCET goal!
           </p>
         </div>
       </div>
 
-      {/* Data Management */}
-      <div className="glass-effect p-6 rounded-2xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20">
-        <p className="text-lg font-semibold mb-4 text-orange-900 dark:text-orange-100">⚠️ डेटा प्रबंधन</p>
-        
+      <div className="glass-effect p-6 rounded-2xl border border-orange-200 bg-orange-50 shadow-sm dark:border-orange-800 dark:bg-orange-950/80">
+        <p className="text-lg font-semibold mb-4 text-orange-900 dark:text-orange-100">⚠️ Data management</p>
+
         <button
           onClick={() => {
-            if (confirm("क्या आप सभी डेटा साफ़ करना चाहते हैं? यह क्रिया पूरी तरह से अपरिवर्तनीय है।")) {
+            if (confirm("Do you want to clear all data? This action is irreversible.")) {
               localStorage.clear();
               window.location.reload();
             }
           }}
           className="w-full px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition"
         >
-          सभी डेटा साफ़ करो
+          Clear all data
         </button>
       </div>
     </div>

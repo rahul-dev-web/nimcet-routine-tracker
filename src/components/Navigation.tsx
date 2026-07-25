@@ -8,14 +8,14 @@ export function Navigation() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", label: "डैशबोर्ड", icon: Home },
-    { href: "/routine", label: "रूटीन", icon: ListTodo },
-    { href: "/progress", label: "प्रगति", icon: BarChart3 },
-    { href: "/settings", label: "सेटिंग्स", icon: Settings },
+    { href: "/", label: "Dashboard", icon: Home },
+    { href: "/routine", label: "Routine", icon: ListTodo },
+    { href: "/progress", label: "Progress", icon: BarChart3 },
+    { href: "/settings", label: "Settings", icon: Settings },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-gray-200 dark:border-gray-700 px-4 py-3 md:relative md:border-t-0 md:border-r md:px-0 md:py-6">
+    <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-slate-200 dark:border-slate-700 px-4 py-3 md:relative md:border-t-0 md:border-r md:px-0 md:py-6 shadow-sm">
       <div className="flex justify-around md:flex-col md:space-y-2">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href;
@@ -27,7 +27,7 @@ export function Navigation() {
               className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 px-4 py-3 rounded-lg transition-all ${
                 isActive
                   ? "bg-blue-500 text-white shadow-lg"
-                  : "text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  : "text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               <Icon size={24} />
