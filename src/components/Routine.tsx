@@ -4,16 +4,19 @@ import { useState } from "react";
 import { useRoutineStore } from "@/store/routineStore";
 import { CheckCircle2, Circle, Clock, Target } from "lucide-react";
 import { motion } from "framer-motion";
+import { getTodayDateKey } from "@/lib/routineBuilder";
 
 export function Routine() {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateKey());
 
-  const routine = useRoutineStore((state) => state.routine);
-  const currentTask = useRoutineStore((state) => state.getCurrentTask());
+  const routine = useRoutineStore((state) => state.getRoutineForDate(selectedDate));
+  const dayPlan = useRoutineStore((state) => state.getDayPlan(selectedDate));
+  const setCollegePlan = useRoutineStore((state) => state.setCollegePlan);
+  const currentTask = useRoutineStore((state) => state.getCurrentTask(selectedDate));
   const toggleTaskCompletion = useRoutineStore((state) => state.toggleTaskCompletion);
   const dailyProgress = useRoutineStore((state) => state.getDailyProgress(selectedDate));
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayDateKey();
   const isToday = selectedDate === today;
 
   const groupedTasks = routine.reduce(
@@ -44,9 +47,9 @@ export function Routine() {
   };
 
   const handleDateChange = (offset: number) => {
-    const date = new Date(selectedDate);
+    const date = new Date(`${selectedDate}T12:00:00`);
     date.setDate(date.getDate() + offset);
-    setSelectedDate(date.toISOString().split("T")[0]);
+    setSelectedDate(date.toLocaleDateString("en-CA"));
   };
 
   return (
@@ -77,6 +80,34 @@ export function Routine() {
             className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition"
           >
             ▶
+          </button>
+        </div>
+      </div>
+
+      <div className="glass-effect p-4 rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Aaj ka plan</p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={() => setCollegePlan(selectedDate, true)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              dayPlan.college === "going"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+            }`}
+          >
+            College jaa raha hoon
+          </button>
+          <button
+            type="button"
+            onClick={() => setCollegePlan(selectedDate, false)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              dayPlan.college === "not_going" || dayPlan.college === "pending"
+                ? "bg-slate-800 text-white dark:bg-slate-600"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+            }`}
+          >
+            Ghar pe padhai
           </button>
         </div>
       </div>

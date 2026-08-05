@@ -2,16 +2,13 @@
 
 import { useRoutineStore } from "@/store/routineStore";
 import { TrendingUp, Clock, Zap } from "lucide-react";
+import { getTodayDateKey } from "@/lib/routineBuilder";
 
 export function Progress() {
-  const routine = useRoutineStore((state) => state.routine);
+  const today = getTodayDateKey();
+  const routine = useRoutineStore((state) => state.getRoutineForDate(today));
   const calculateStudyHours = useRoutineStore((state) => state.calculateStudyHours);
-  const dailyProgress = useRoutineStore((state) => {
-    const today = new Date().toISOString().split("T")[0];
-    return state.getDailyProgress(today);
-  });
-
-  const today = new Date().toISOString().split("T")[0];
+  const dailyProgress = useRoutineStore((state) => state.getDailyProgress(today));
   const todayStudyHours = calculateStudyHours(today);
   const studyTasks = routine.filter((t) => t.category === "study");
   const completedStudyTasks = dailyProgress?.tasks.filter(

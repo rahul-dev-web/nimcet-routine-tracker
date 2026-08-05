@@ -3,20 +3,21 @@
 import { useEffect, useState } from "react";
 import { useRoutineStore } from "@/store/routineStore";
 import { Clock, TrendingUp } from "lucide-react";
+import { CollegePrompt } from "@/components/CollegePrompt";
+import { getTodayDateKey } from "@/lib/routineBuilder";
 
 export function Dashboard() {
   const [time, setTime] = useState<string>("");
   const [greeting, setGreeting] = useState<string>("");
   const [date, setDate] = useState<string>("");
+  const today = getTodayDateKey();
 
   const profile = useRoutineStore((state) => state.profile);
-  const currentTask = useRoutineStore((state) => state.getCurrentTask());
-  const nextTask = useRoutineStore((state) => state.getNextTask());
-  const routine = useRoutineStore((state) => state.routine);
-  const dailyProgress = useRoutineStore((state) => {
-    const today = new Date().toISOString().split("T")[0];
-    return state.getDailyProgress(today);
-  });
+  const dayPlan = useRoutineStore((state) => state.getDayPlan(today));
+  const currentTask = useRoutineStore((state) => state.getCurrentTask(today));
+  const nextTask = useRoutineStore((state) => state.getNextTask(today));
+  const routine = useRoutineStore((state) => state.getRoutineForDate(today));
+  const dailyProgress = useRoutineStore((state) => state.getDailyProgress(today));
   const calculateStudyHours = useRoutineStore((state) => state.calculateStudyHours);
 
   useEffect(() => {
@@ -44,15 +45,26 @@ export function Dashboard() {
   }, []);
 
   const progressPercent = dailyProgress ? Math.round((dailyProgress.completedTasks / dailyProgress.totalTasks) * 100) : 0;
-  const studyHours = calculateStudyHours(new Date().toISOString().split("T")[0]);
+  const studyHours = calculateStudyHours(today);
+
+  const planLabel =
+    dayPlan.college === "going"
+      ? "🎓 Aaj college day routine"
+      : dayPlan.college === "not_going"
+        ? dayPlan.autoDefaulted
+          ? "🏠 Ghar wala routine (9 AM ke baad auto-default)"
+          : "🏠 Ghar pe padhai wala routine"
+        : "⏳ Subah 9 AM tak college ka jawab do";
 
   return (
     <div className="space-y-6">
+      <CollegePrompt />
       <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
         <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-slate-900 dark:text-slate-100">{greeting}, {profile.name}!</h1>
             <p className="text-lg text-slate-700 dark:text-slate-400">{date}</p>
+            <p className="text-sm mt-2 text-blue-700 dark:text-blue-300 font-medium">{planLabel}</p>
           </div>
           <div className="text-left md:text-right">
             <div className="text-4xl sm:text-5xl font-bold text-blue-600 flex items-center gap-2">

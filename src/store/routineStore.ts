@@ -1,4 +1,10 @@
 import { create } from "zustand";
+import {
+  ROUTINE_SCHEMA_VERSION,
+  buildRoutineForDay,
+  getTodayDateKey,
+  isCollegeQuestionOpen,
+} from "@/lib/routineBuilder";
 
 export interface RoutineTask {
   id: string;
@@ -34,55 +40,41 @@ export interface UserProfile {
   theme: "light" | "dark" | "system";
 }
 
+export type CollegePlanStatus = "pending" | "going" | "not_going";
+
+export interface DayPlan {
+  date: string;
+  college: CollegePlanStatus;
+  answeredAt?: string;
+  autoDefaulted?: boolean;
+}
+
 interface RoutineState {
   profile: UserProfile;
-  routine: RoutineTask[];
+  routineSchemaVersion: number;
+  dailyPlans: Map<string, DayPlan>;
   dailyProgress: Map<string, DailyProgress>;
   currentTime: string;
-  
-  // Actions
+
   setProfile: (profile: UserProfile) => void;
-  setRoutine: (routine: RoutineTask[]) => void;
+  setCollegePlan: (date: string, goingToCollege: boolean) => void;
+  resolvePendingCollegePlans: () => void;
+  getDayPlan: (date: string) => DayPlan;
+  isGoingToCollege: (date: string) => boolean;
+  getRoutineForDate: (date: string) => RoutineTask[];
   toggleTaskCompletion: (taskId: string, date: string) => void;
   updateCurrentTime: (time: string) => void;
-  getCurrentTask: () => RoutineTask | null;
-  getNextTask: () => RoutineTask | null;
+  getCurrentTask: (date?: string) => RoutineTask | null;
+  getNextTask: (date?: string) => RoutineTask | null;
   getDailyProgress: (date: string) => DailyProgress | null;
   calculateStudyHours: (date: string) => number;
   loadFromLocalStorage: () => void;
   saveToLocalStorage: () => void;
 }
 
-const DEFAULT_ROUTINE: RoutineTask[] = [
-  { id: "1", title: "Wake up, drink water", startTime: "06:00", endTime: "06:10", duration: 10, order: 1, completed: false, category: "other" },
-  { id: "2", title: "Jogging + exercise", startTime: "06:10", endTime: "07:00", duration: 50, order: 2, completed: false, category: "exercise" },
-  { id: "3", title: "Freshen up", startTime: "07:00", endTime: "07:30", duration: 30, order: 3, completed: false, category: "other" },
-  { id: "4", title: "Breakfast + chores", startTime: "07:30", endTime: "08:15", duration: 45, order: 4, completed: false, category: "other" },
-  { id: "5", title: "Revision (Flashcards/Formula)", startTime: "08:15", endTime: "08:50", duration: 35, order: 5, completed: false, category: "study" },
-  { id: "6", title: "Get ready to leave for college", startTime: "08:50", endTime: "09:00", duration: 10, order: 6, completed: false, category: "other" },
-  { id: "7", title: "Travel to college", startTime: "09:00", endTime: "09:30", duration: 30, order: 7, completed: false, category: "other" },
-  { id: "8", title: "Organize notes / plan", startTime: "09:30", endTime: "10:00", duration: 30, order: 8, completed: false, category: "study" },
-  { id: "9", title: "Maths (Concept + Practice)", startTime: "10:00", endTime: "12:00", duration: 120, order: 9, completed: false, category: "study" },
-  { id: "10", title: "Break", startTime: "12:00", endTime: "12:15", duration: 15, order: 10, completed: false, category: "break" },
-  { id: "11", title: "Reasoning / Computer", startTime: "12:15", endTime: "13:15", duration: 60, order: 11, completed: false, category: "study" },
-  { id: "12", title: "Lunch", startTime: "13:15", endTime: "13:45", duration: 30, order: 12, completed: false, category: "break" },
-  { id: "13", title: "PYQs + Question Practice", startTime: "13:45", endTime: "15:15", duration: 90, order: 13, completed: false, category: "study" },
-  { id: "14", title: "Break", startTime: "15:15", endTime: "15:30", duration: 15, order: 14, completed: false, category: "break" },
-  { id: "15", title: "Topic Test / Sectional Test", startTime: "15:30", endTime: "16:30", duration: 60, order: 15, completed: false, category: "study" },
-  { id: "16", title: "Review wrong questions", startTime: "16:30", endTime: "17:00", duration: 30, order: 16, completed: false, category: "study" },
-  { id: "17", title: "Head home", startTime: "17:00", endTime: "17:30", duration: 30, order: 17, completed: false, category: "other" },
-  { id: "18", title: "Walk / relax", startTime: "17:30", endTime: "19:00", duration: 90, order: 18, completed: false, category: "break" },
-  { id: "19", title: "Deep Study (Weak topics)", startTime: "19:00", endTime: "21:00", duration: 120, order: 19, completed: false, category: "study" },
-  { id: "20", title: "Dinner", startTime: "21:00", endTime: "21:30", duration: 30, order: 20, completed: false, category: "break" },
-  { id: "21", title: "Development / Projects", startTime: "21:30", endTime: "22:30", duration: 60, order: 21, completed: false, category: "study" },
-  { id: "22", title: "Daily revision + plan for tomorrow", startTime: "22:30", endTime: "23:00", duration: 30, order: 22, completed: false, category: "study" },
-  { id: "23", title: "Games / entertainment", startTime: "23:00", endTime: "23:30", duration: 30, order: 23, completed: false, category: "other" },
-  { id: "24", title: "Sleep", startTime: "23:30", endTime: "06:00", duration: 390, order: 24, completed: false, category: "other" },
-];
-
 const DEFAULT_PROFILE: UserProfile = {
   name: "Rahul",
-  wakeUpTime: "06:00",
+  wakeUpTime: "07:00",
   sleepTime: "23:30",
   studyTargetHours: 8,
   theme: "system",
@@ -90,7 +82,8 @@ const DEFAULT_PROFILE: UserProfile = {
 
 export const useRoutineStore = create<RoutineState>((set, get) => ({
   profile: DEFAULT_PROFILE,
-  routine: DEFAULT_ROUTINE,
+  routineSchemaVersion: ROUTINE_SCHEMA_VERSION,
+  dailyPlans: new Map(),
   dailyProgress: new Map(),
   currentTime: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }),
 
@@ -99,9 +92,52 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
     get().saveToLocalStorage();
   },
 
-  setRoutine: (routine) => {
-    set({ routine });
+  setCollegePlan: (date, goingToCollege) => {
+    set((state) => {
+      const dailyPlans = new Map(state.dailyPlans);
+      dailyPlans.set(date, {
+        date,
+        college: goingToCollege ? "going" : "not_going",
+        answeredAt: new Date().toISOString(),
+        autoDefaulted: false,
+      });
+      return { dailyPlans };
+    });
     get().saveToLocalStorage();
+  },
+
+  resolvePendingCollegePlans: () => {
+    const today = getTodayDateKey();
+    const plan = get().getDayPlan(today);
+    if (plan.college !== "pending") return;
+    if (isCollegeQuestionOpen()) return;
+
+    set((state) => {
+      const dailyPlans = new Map(state.dailyPlans);
+      dailyPlans.set(today, {
+        date: today,
+        college: "not_going",
+        autoDefaulted: true,
+        answeredAt: new Date().toISOString(),
+      });
+      return { dailyPlans };
+    });
+    get().saveToLocalStorage();
+  },
+
+  getDayPlan: (date) => {
+    return get().dailyPlans.get(date) ?? { date, college: "pending" };
+  },
+
+  isGoingToCollege: (date) => {
+    get().resolvePendingCollegePlans();
+    return get().getDayPlan(date).college === "going";
+  },
+
+  getRoutineForDate: (date) => {
+    get().resolvePendingCollegePlans();
+    const going = get().isGoingToCollege(date);
+    return buildRoutineForDate(date, going);
   },
 
   updateCurrentTime: (time) => {
@@ -109,22 +145,31 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
   },
 
   toggleTaskCompletion: (taskId, date) => {
+    const routine = get().getRoutineForDate(date);
+
     set((state) => {
       const updatedProgress = new Map(state.dailyProgress);
       const dayProgress = updatedProgress.get(date) || {
         date,
         completedTasks: 0,
-        totalTasks: state.routine.length,
+        totalTasks: routine.length,
         studyHours: 0,
-        tasks: state.routine.map((t): DailyTaskProgress => ({ taskId: t.id, completed: false })),
+        tasks: routine.map((t): DailyTaskProgress => ({ taskId: t.id, completed: false })),
       };
+
+      if (dayProgress.totalTasks !== routine.length) {
+        dayProgress.totalTasks = routine.length;
+        dayProgress.tasks = routine.map((t) => {
+          const prev = dayProgress.tasks.find((p) => p.taskId === t.id);
+          return prev ?? { taskId: t.id, completed: false };
+        });
+      }
 
       const taskIndex = dayProgress.tasks.findIndex((t) => t.taskId === taskId);
       if (taskIndex !== -1) {
         const taskProgress = dayProgress.tasks[taskIndex];
         taskProgress.completed = !taskProgress.completed;
         taskProgress.completedAt = taskProgress.completed ? new Date().toISOString() : undefined;
-
         dayProgress.completedTasks = dayProgress.tasks.filter((t) => t.completed).length;
       }
 
@@ -135,51 +180,39 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
     get().saveToLocalStorage();
   },
 
-  getCurrentTask: () => {
-  const state = get();
-
-  const now = new Date();
-  const currentMinutes =
-    now.getHours() * 60 +
-    now.getMinutes();
-
-  return (
-    state.routine.find((task) => {
-      const [startH, startM] =
-        task.startTime.split(":").map(Number);
-
-      const [endH, endM] =
-        task.endTime.split(":").map(Number);
-
-      const startMinutes =
-        startH * 60 + startM;
-
-      const endMinutes =
-        endH * 60 + endM;
-
-      // Sleep Task
-      if (endMinutes < startMinutes) {
-        return (
-          currentMinutes >= startMinutes ||
-          currentMinutes < endMinutes
-        );
-      }
-
-      return (
-        currentMinutes >= startMinutes &&
-        currentMinutes < endMinutes
-      );
-    }) || null
-  );
-},
-
-  getNextTask: () => {
+  getCurrentTask: (date) => {
     const state = get();
-    const currentTask = get().getCurrentTask();
-    if (!currentTask) return state.routine[0] || null;
+    const targetDate = date ?? getTodayDateKey();
+    const routine = state.getRoutineForDate(targetDate);
 
-    const currentIndex = state.routine.findIndex((t) => t.id === currentTask.id);
-    return currentIndex !== -1 && currentIndex + 1 < state.routine.length ? state.routine[currentIndex + 1] : null;
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    return (
+      routine.find((task) => {
+        const [startH, startM] = task.startTime.split(":").map(Number);
+        const [endH, endM] = task.endTime.split(":").map(Number);
+        const startMinutes = startH * 60 + startM;
+        const endMinutes = endH * 60 + endM;
+
+        if (endMinutes < startMinutes) {
+          return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+        }
+
+        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+      }) || null
+    );
+  },
+
+  getNextTask: (date) => {
+    const state = get();
+    const targetDate = date ?? getTodayDateKey();
+    const routine = state.getRoutineForDate(targetDate);
+    const currentTask = state.getCurrentTask(targetDate);
+    if (!currentTask) return routine[0] || null;
+
+    const currentIndex = routine.findIndex((t) => t.id === currentTask.id);
+    return currentIndex !== -1 && currentIndex + 1 < routine.length ? routine[currentIndex + 1] : null;
   },
 
   getDailyProgress: (date) => {
@@ -191,8 +224,9 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
     const dayProgress = state.dailyProgress.get(date);
     if (!dayProgress) return 0;
 
+    const routine = state.getRoutineForDate(date);
     let studyMinutes = 0;
-    state.routine.forEach((task) => {
+    routine.forEach((task) => {
       if (task.category === "study") {
         const taskProgress = dayProgress.tasks.find((t) => t.taskId === task.id);
         if (taskProgress?.completed) {
@@ -201,7 +235,7 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
       }
     });
 
-    return Math.round((studyMinutes / 60) * 10) / 10; // Return hours with 1 decimal
+    return Math.round((studyMinutes / 60) * 10) / 10;
   },
 
   loadFromLocalStorage: () => {
@@ -210,16 +244,25 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
     const stored = localStorage.getItem("routineStore");
     if (stored) {
       try {
-        const { profile, routine, dailyProgress } = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        const version = parsed.routineSchemaVersion ?? 1;
+
         set({
-          profile: profile || DEFAULT_PROFILE,
-          routine: routine || DEFAULT_ROUTINE,
-          dailyProgress: new Map(dailyProgress || []),
+          profile: { ...DEFAULT_PROFILE, ...(parsed.profile || {}) },
+          routineSchemaVersion: version >= ROUTINE_SCHEMA_VERSION ? version : ROUTINE_SCHEMA_VERSION,
+          dailyPlans: new Map(parsed.dailyPlans || []),
+          dailyProgress: new Map(parsed.dailyProgress || []),
         });
+
+        if (version < ROUTINE_SCHEMA_VERSION) {
+          get().saveToLocalStorage();
+        }
       } catch {
         console.error("Failed to load from localStorage");
       }
     }
+
+    get().resolvePendingCollegePlans();
   },
 
   saveToLocalStorage: () => {
@@ -227,8 +270,9 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
 
     const state = get();
     const toStore = {
+      routineSchemaVersion: ROUTINE_SCHEMA_VERSION,
       profile: state.profile,
-      routine: state.routine,
+      dailyPlans: Array.from(state.dailyPlans.entries()),
       dailyProgress: Array.from(state.dailyProgress.entries()),
     };
 
