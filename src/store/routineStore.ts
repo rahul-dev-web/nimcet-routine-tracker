@@ -137,7 +137,7 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
   getRoutineForDate: (date) => {
     get().resolvePendingCollegePlans();
     const going = get().isGoingToCollege(date);
-    return buildRoutineForDate(date, going);
+    return buildRoutineForDay(date, going);
   },
 
   updateCurrentTime: (time) => {

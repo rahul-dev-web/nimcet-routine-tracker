@@ -2,7 +2,7 @@
 
 import { useRoutineStore } from "@/store/routineStore";
 import { TrendingUp, Clock, Zap } from "lucide-react";
-import { getTodayDateKey } from "@/lib/routineBuilder";
+import { formatDateKey, getTodayDateKey } from "@/lib/routineBuilder";
 
 export function Progress() {
   const today = getTodayDateKey();
@@ -20,7 +20,7 @@ export function Progress() {
     const date = new Date();
 
     for (let i = 0; i < 30; i++) {
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = formatDateKey(date);
       const progress = useRoutineStore.getState().getDailyProgress(dateStr);
 
       if (progress && progress.completedTasks === progress.totalTasks) {

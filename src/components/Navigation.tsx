@@ -31,7 +31,7 @@ export function Navigation() {
               }`}
             >
               <Icon size={24} />
-              <span className="text-xs md:text-sm font-medium hidden xs:inline">{label}</span>
+              <span className="text-xs md:text-sm font-medium hidden md:inline">{label}</span>
             </Link>
           );
         })}

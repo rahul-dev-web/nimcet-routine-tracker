@@ -17,6 +17,10 @@ function parseTime(time: string): number {
   return h * 60 + m;
 }
 
+export function formatDateKey(date: Date = new Date()): string {
+  return date.toLocaleDateString("en-CA");
+}
+
 function formatMinutes(totalMinutes: number): string {
   const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
   const h = Math.floor(normalized / 60);
@@ -170,7 +174,7 @@ export function buildRoutineForDay(dateStr: string, goingToCollege: boolean): Ro
 }
 
 export function getTodayDateKey(): string {
-  return new Date().toLocaleDateString("en-CA");
+  return formatDateKey();
 }
 
 export function isCollegeQuestionOpen(now = new Date()): boolean {

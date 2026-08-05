@@ -66,7 +66,7 @@ export function Routine() {
           <div className="flex-1 text-center">
             <p className="text-sm text-slate-700 dark:text-slate-300 uppercase font-semibold mb-1">Date</p>
             <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {new Date(selectedDate).toLocaleDateString("en-US", {
+              {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", {
                 weekday: "long",
                 day: "numeric",
                 month: "short",
