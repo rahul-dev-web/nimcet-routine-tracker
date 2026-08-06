@@ -1,6 +1,6 @@
 import type { RoutineTask } from "@/store/routineStore";
 
-export const ROUTINE_SCHEMA_VERSION = 2;
+export const ROUTINE_SCHEMA_VERSION = 3;
 export const COLLEGE_QUESTION_DEADLINE = "09:00";
 export const WAKE_TIME = "07:00";
 export const SLEEP_END = "07:00";
@@ -30,25 +30,25 @@ function formatMinutes(totalMinutes: number): string {
 
 function chainSegments(segments: Segment[], startMinutes: number): RoutineTask[] {
   let cursor = startMinutes;
-  return segments.map((seg, index) => {
+  return segments.map((segment, index) => {
     const startTime = formatMinutes(cursor);
-    cursor += seg.duration;
+    cursor += segment.duration;
     const endTime = formatMinutes(cursor);
     return {
-      id: seg.id,
-      title: seg.title,
+      id: segment.id,
+      title: segment.title,
       startTime,
       endTime,
-      duration: seg.duration,
+      duration: segment.duration,
       order: index + 1,
       completed: false,
-      category: seg.category,
+      category: segment.category,
     };
   });
 }
 
-function scaleStudyDuration(minutes: number, scale: number): number {
-  return Math.max(5, Math.round(minutes * scale));
+function scaleStudyDuration(minutes: number): number {
+  return Math.max(5, Math.round(minutes * 0.75));
 }
 
 function isWeekend(dateStr: string): boolean {
@@ -59,118 +59,78 @@ function isWeekend(dateStr: string): boolean {
 function eveningSegments(): Segment[] {
   return [
     { id: "dinner", title: "Dinner", duration: 30, category: "break" },
-    { id: "dev-projects", title: "Development / Projects", duration: 60, category: "study" },
-    { id: "daily-revision", title: "Daily revision + plan for tomorrow", duration: 30, category: "study" },
+    { id: "dev-projects", title: "Coding / development", duration: 90, category: "study" },
+    { id: "personal-projects", title: "Projects / building", duration: 45, category: "study" },
     { id: "games", title: "Games / entertainment", duration: 30, category: "other" },
-    { id: "sleep", title: "Sleep", duration: 450, category: "other" },
+    { id: "sleep", title: "Sleep", duration: 405, category: "other" },
   ];
 }
 
-function homeStudySegments(dateStr: string, studyScale: number): Segment[] {
+function homeStudySegments(dateStr: string): Segment[] {
   const weekend = isWeekend(dateStr);
+  const questionFocus = weekend ? " (Question solving / PYQs)" : "";
 
-  const mathsTitle = weekend
-    ? "Maths (Question solving / PYQs)"
-    : "Maths (Concept + Practice)";
-  const reasoningTitle = weekend
-    ? "Reasoning / Computer (Question solving)"
-    : "Reasoning / Computer";
-  const organizeTitle = weekend
-    ? "Organize notes + pick PYQ sets"
-    : "Organize notes / plan";
-  const deepStudyTitle = weekend
-    ? "Question solving marathon (mixed topics)"
-    : "Deep Study (Weak topics)";
+  const revision = scaleStudyDuration(35);
+  const organize = scaleStudyDuration(30);
+  const maths = scaleStudyDuration(120);
+  const reasoning = scaleStudyDuration(60);
+  const pyqs = scaleStudyDuration(90);
+  const topicTest = scaleStudyDuration(60);
+  const review = scaleStudyDuration(30);
+  const deepStudy = scaleStudyDuration(120);
 
-  const revision = scaleStudyDuration(35, studyScale);
-  const organize = scaleStudyDuration(30, studyScale);
-  const maths = scaleStudyDuration(120, studyScale);
-  const reasoning = scaleStudyDuration(60, studyScale);
-  const pyqs = scaleStudyDuration(90, studyScale);
-  const topicTest = scaleStudyDuration(60, studyScale);
-  const review = scaleStudyDuration(30, studyScale);
-  const deepStudy = scaleStudyDuration(120, studyScale);
-
-  const originalStudy =
-    35 + 30 + 120 + 60 + 90 + 60 + 30 + 120;
-  const scaledStudy = revision + organize + maths + reasoning + pyqs + topicTest + review + deepStudy;
-  const freedMinutes = originalStudy - scaledStudy;
-
-  const segments: Segment[] = [
-    { id: "revision", title: "Revision (Flashcards/Formula)", duration: revision, category: "study" },
-    { id: "organize", title: organizeTitle, duration: organize, category: "study" },
-    { id: "maths", title: mathsTitle, duration: maths, category: "study" },
-    { id: "break-midday", title: "Break", duration: 15, category: "break" },
-    { id: "reasoning", title: reasoningTitle, duration: reasoning, category: "study" },
+  // 09:30–21:00: the 25% study reduction becomes a real afternoon recovery block.
+  return [
+    { id: "revision", title: `Revision (formulas + questions)${questionFocus}`, duration: revision, category: "study" },
+    { id: "organize", title: `Organize notes + choose question sets${questionFocus}`, duration: organize, category: "study" },
+    { id: "maths", title: `Maths${weekend ? " (question solving / PYQs)" : " (concept + practice)"}`, duration: maths, category: "study" },
+    { id: "break-midday", title: "Short break", duration: 15, category: "break" },
+    { id: "reasoning", title: `Reasoning / Computer${questionFocus}`, duration: reasoning, category: "study" },
     { id: "lunch", title: "Lunch", duration: 30, category: "break" },
-    { id: "pyqs", title: "PYQs + Question Practice", duration: pyqs, category: "study" },
+    { id: "pyqs", title: `PYQs + question practice${questionFocus}`, duration: pyqs, category: "study" },
+    { id: "afternoon-free", title: "Afternoon rest + games + projects", duration: 130, category: "break" },
     { id: "break-afternoon", title: "Break", duration: 15, category: "break" },
-    { id: "topic-test", title: "Topic Test / Sectional Test", duration: topicTest, category: "study" },
+    { id: "topic-test", title: `Topic test / sectional questions${questionFocus}`, duration: topicTest, category: "study" },
     { id: "review", title: "Review wrong questions", duration: review, category: "study" },
-  ];
-
-  if (freedMinutes >= 15) {
-    segments.push({
-      id: "afternoon-free",
-      title: "Rest + games + personal projects",
-      duration: freedMinutes,
-      category: "break",
-    });
-  }
-
-  segments.push(
     { id: "walk-relax", title: "Walk / relax", duration: 90, category: "break" },
-    { id: "deep-study", title: deepStudyTitle, duration: deepStudy, category: "study" },
-  );
-
-  return segments;
+    { id: "deep-study", title: weekend ? "Mixed question-solving session" : "Deep study (weak topics)", duration: deepStudy, category: "study" },
+  ];
 }
 
 export function buildCollegeDayRoutine(): RoutineTask[] {
-  const morning: Segment[] = [
+  const segments: Segment[] = [
     { id: "wake", title: "Wake up, drink water", duration: 10, category: "other" },
-    {
-      id: "morning-prep",
-      title: "Breakfast, freshen up, ghar ke kaam",
-      duration: 110,
-      category: "other",
-    },
+    { id: "morning-prep", title: "Breakfast, freshen up, ghar ke kaam", duration: 110, category: "other" },
     { id: "travel-college", title: "College jaana (travel)", duration: 30, category: "other" },
-    {
-      id: "college-dev-block",
-      title: "Coding, development, projects & games",
-      duration: 165,
-      category: "other",
-    },
-    { id: "college-nap", title: "Sleep / rest", duration: 405, category: "other" },
-    { id: "deep-study", title: "Deep Study (Weak topics)", duration: 120, category: "study" },
+    { id: "organize", title: "Organize notes", duration: 30, category: "study" },
+    { id: "maths", title: "Maths", duration: 120, category: "study" },
+    { id: "break-midday", title: "Break", duration: 15, category: "break" },
+    { id: "reasoning", title: "Reasoning / Computer", duration: 60, category: "study" },
+    { id: "lunch", title: "Lunch", duration: 30, category: "break" },
+    { id: "pyqs", title: "PYQs + question practice", duration: 90, category: "study" },
+    { id: "break-afternoon", title: "Break", duration: 15, category: "break" },
+    { id: "topic-test", title: "Topic test / sectional test", duration: 60, category: "study" },
+    { id: "review", title: "Review wrong questions", duration: 30, category: "study" },
+    { id: "travel-home", title: "Head home", duration: 30, category: "other" },
+    { id: "walk-relax", title: "Walk / relax", duration: 90, category: "break" },
+    { id: "deep-study", title: "Deep study (weak topics)", duration: 120, category: "study" },
   ];
 
-  const start = parseTime(WAKE_TIME);
-  return chainSegments([...morning, ...eveningSegments()], start);
+  return chainSegments([...segments, ...eveningSegments()], parseTime(WAKE_TIME));
 }
 
 export function buildHomeDayRoutine(dateStr: string): RoutineTask[] {
   const morning: Segment[] = [
     { id: "wake", title: "Wake up, drink water", duration: 10, category: "other" },
-    {
-      id: "morning-prep",
-      title: "Break, freshen up, ghar ke kaam",
-      duration: 140,
-      category: "other",
-    },
+    { id: "morning-prep", title: "Breakfast, freshen up, ghar ke kaam", duration: 110, category: "other" },
+    { id: "morning-chores", title: "Ghar ke kaam finish karna", duration: 30, category: "other" },
   ];
 
-  const studyScale = 0.75;
-  const start = parseTime(WAKE_TIME);
-  return chainSegments([...morning, ...homeStudySegments(dateStr, studyScale), ...eveningSegments()], start);
+  return chainSegments([...morning, ...homeStudySegments(dateStr), ...eveningSegments()], parseTime(WAKE_TIME));
 }
 
 export function buildRoutineForDay(dateStr: string, goingToCollege: boolean): RoutineTask[] {
-  if (goingToCollege) {
-    return buildCollegeDayRoutine();
-  }
-  return buildHomeDayRoutine(dateStr);
+  return goingToCollege ? buildCollegeDayRoutine() : buildHomeDayRoutine(dateStr);
 }
 
 export function getTodayDateKey(): string {
