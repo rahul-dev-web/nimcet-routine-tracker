@@ -3,39 +3,21 @@ import type { RoutineTask, UserProfile } from "@/store/routineStore";
 export const ROUTINE_SCHEMA_VERSION = 4;
 export const COLLEGE_QUESTION_DEADLINE = "09:00";
 
-export type Segment = {
-  id: string;
-  title: string;
-  duration: number;
-  category: RoutineTask["category"];
-};
+export type Segment = { id: string; title: string; duration: number; category: RoutineTask["category"] };
 
-export function parseTime(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-export function formatDateKey(date: Date = new Date()): string {
-  return date.toLocaleDateString("en-CA");
-}
-
-export function getLocalTimeMinutes(date: Date = new Date()): number {
-  return date.getHours() * 60 + date.getMinutes();
-}
+export function parseTime(time: string): number { const [h, m] = time.split(":").map(Number); return h * 60 + m; }
+export function formatDateKey(date: Date = new Date()): string { return date.toLocaleDateString("en-CA"); }
+export function getLocalTimeMinutes(date: Date = new Date()): number { return date.getHours() * 60 + date.getMinutes(); }
 
 function formatMinutes(totalMinutes: number): string {
-  const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
-  const h = Math.floor(normalized / 60);
-  const m = normalized % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
 }
 
 function chainSegments(segments: Segment[], startMinutes: number): RoutineTask[] {
   let cursor = startMinutes;
   return segments.map((segment, index) => {
-    const startTime = formatMinutes(cursor);
-    cursor += segment.duration;
-    const endTime = formatMinutes(cursor);
+    const startTime = formatMinutes(cursor); cursor += segment.duration; const endTime = formatMinutes(cursor);
     return { id: segment.id, title: segment.title, startTime, endTime, duration: segment.duration, order: index + 1, completed: false, category: segment.category };
   });
 }
@@ -46,45 +28,39 @@ function scaleStudySegments(segments: Segment[], targetHours: number): Segment[]
   const targetMinutes = Math.max(60, Math.round(targetHours * 60));
   const currentMinutes = study.reduce((sum, segment) => sum + segment.duration, 0);
   if (!currentMinutes) return segments;
-
-  const scaled = new Map<string, number>();
-  let assigned = 0;
+  const scaled = new Map<string, number>(); let assigned = 0;
   study.forEach((segment, index) => {
-    const duration = index === study.length - 1
-      ? Math.max(5, targetMinutes - assigned)
-      : Math.max(5, Math.round((segment.duration / currentMinutes) * targetMinutes));
-    scaled.set(segment.id, duration);
-    assigned += duration;
+    const duration = index === study.length - 1 ? Math.max(5, targetMinutes - assigned) : Math.max(5, Math.round((segment.duration / currentMinutes) * targetMinutes));
+    scaled.set(segment.id, duration); assigned += duration;
   });
   return segments.map((segment) => segment.category === "study" ? { ...segment, duration: scaled.get(segment.id) ?? segment.duration } : segment);
 }
 
-function isWeekend(dateStr: string): boolean {
-  const day = new Date(`${dateStr}T12:00:00`).getDay();
-  return day === 0 || day === 6;
-}
+function isWeekend(dateStr: string): boolean { const day = new Date(`${dateStr}T12:00:00`).getDay(); return day === 0 || day === 6; }
 
 function minutesUntilNextTime(fromMinutes: number, targetTime: string): number {
-  const target = parseTime(targetTime);
-  const diff = target - fromMinutes;
-  return diff > 0 ? diff : diff + 24 * 60;
+  const diff = parseTime(targetTime) - fromMinutes;
+  return diff > 0 ? diff : diff + 1440;
 }
 
-function eveningSegments(profile: UserProfile, startMinutes: number): Segment[] {
-  const preSleep: Segment[] = [
+function addSleep(segments: Segment[], startMinutes: number, sleepTime: string): Segment[] {
+  const elapsed = segments.reduce((sum, segment) => sum + segment.duration, 0);
+  const sleepStart = (startMinutes + elapsed) % 1440;
+  const sleepDuration = Math.max(30, minutesUntilNextTime(sleepStart, sleepTime));
+  return [...segments, { id: "sleep", title: "Sleep", duration: sleepDuration, category: "other" }];
+}
+
+function eveningSegments(): Segment[] {
+  return [
     { id: "dinner", title: "Dinner", duration: 30, category: "break" },
     { id: "dev-projects", title: "Coding / development", duration: 90, category: "study" },
     { id: "personal-projects", title: "Projects / building", duration: 45, category: "study" },
     { id: "games", title: "Games / entertainment", duration: 30, category: "other" },
   ];
-  const preSleepEnd = startMinutes + preSleep.reduce((sum, segment) => sum + segment.duration, 0);
-  const sleepDuration = Math.max(30, minutesUntilNextTime(preSleepEnd % (24 * 60), profile.sleepTime));
-  return [...preSleep, { id: "sleep", title: "Sleep", duration: sleepDuration, category: "other" }];
 }
 
 function homeStudySegments(dateStr: string): Segment[] {
-  const weekend = isWeekend(dateStr);
-  const questionFocus = weekend ? " (Question solving / PYQs)" : "";
+  const weekend = isWeekend(dateStr); const questionFocus = weekend ? " (Question solving / PYQs)" : "";
   return [
     { id: "revision", title: `Revision (formulas + questions)${questionFocus}`, duration: 35, category: "study" },
     { id: "organize", title: `Organize notes + choose question sets${questionFocus}`, duration: 30, category: "study" },
@@ -104,7 +80,7 @@ function homeStudySegments(dateStr: string): Segment[] {
 
 export function buildCollegeDayRoutine(profile: UserProfile): RoutineTask[] {
   const startMinutes = parseTime(profile.wakeUpTime);
-  const segments: Segment[] = [
+  const base: Segment[] = [
     { id: "wake", title: "Wake up, drink water", duration: 10, category: "other" },
     { id: "morning-prep", title: "Breakfast, freshen up, ghar ke kaam", duration: 110, category: "other" },
     { id: "travel-college", title: "College jaana (travel)", duration: 30, category: "other" },
@@ -120,20 +96,21 @@ export function buildCollegeDayRoutine(profile: UserProfile): RoutineTask[] {
     { id: "travel-home", title: "Head home", duration: 30, category: "other" },
     { id: "walk-relax", title: "Walk / relax", duration: 90, category: "break" },
     { id: "deep-study", title: "Deep study (weak topics)", duration: 120, category: "study" },
+    ...eveningSegments(),
   ];
-  const beforeEvening = segments.reduce((sum, segment) => sum + segment.duration, 0);
-  return chainSegments(scaleStudySegments([...segments, ...eveningSegments(profile, startMinutes + beforeEvening)], profile.studyTargetHours), startMinutes);
+  return chainSegments(addSleep(scaleStudySegments(base, profile.studyTargetHours), startMinutes, profile.sleepTime), startMinutes);
 }
 
 export function buildHomeDayRoutine(dateStr: string, profile: UserProfile): RoutineTask[] {
   const startMinutes = parseTime(profile.wakeUpTime);
-  const morning: Segment[] = [
+  const base: Segment[] = [
     { id: "wake", title: "Wake up, drink water", duration: 10, category: "other" },
     { id: "morning-prep", title: "Breakfast, freshen up, ghar ke kaam", duration: 110, category: "other" },
     { id: "morning-chores", title: "Ghar ke kaam finish karna", duration: 30, category: "other" },
+    ...homeStudySegments(dateStr),
+    ...eveningSegments(),
   ];
-  const beforeEvening = [...morning, ...homeStudySegments(dateStr)].reduce((sum, segment) => sum + segment.duration, 0);
-  return chainSegments(scaleStudySegments([...morning, ...homeStudySegments(dateStr), ...eveningSegments(profile, startMinutes + beforeEvening)], profile.studyTargetHours), startMinutes);
+  return chainSegments(addSleep(scaleStudySegments(base, profile.studyTargetHours), startMinutes, profile.sleepTime), startMinutes);
 }
 
 export function buildRoutineForDay(dateStr: string, goingToCollege: boolean, profile: UserProfile): RoutineTask[] {
@@ -141,7 +118,4 @@ export function buildRoutineForDay(dateStr: string, goingToCollege: boolean, pro
 }
 
 export function getTodayDateKey(): string { return formatDateKey(); }
-
-export function isCollegeQuestionOpen(now = new Date()): boolean {
-  return getLocalTimeMinutes(now) < parseTime(COLLEGE_QUESTION_DEADLINE);
-}
+export function isCollegeQuestionOpen(now = new Date()): boolean { return getLocalTimeMinutes(now) < parseTime(COLLEGE_QUESTION_DEADLINE); }
