@@ -1,6 +1,6 @@
 {
   "name": "nimcet-routine-tracker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "NIMCET Routine Tracker - Study routine & progress tracking",
   "private": true,
   "scripts": {
