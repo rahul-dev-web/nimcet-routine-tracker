@@ -14,8 +14,8 @@ interface RoutineState {
 }
 
 const DEFAULT_PROFILE: UserProfile = { name: "Rahul", wakeUpTime: "06:00", sleepTime: "23:30", studyTargetHours: 8, theme: "system" };
-const getTaskCompleted = (progress: DailyProgress | undefined, taskId: string) => progress?.tasks.find((task) => task.taskId === taskId)?.completed ?? false;
-const calculateStudyHoursFromProgress = (routine: RoutineTask[], progress: DailyProgress | undefined) => {
+const getTaskCompleted = (progress: DailyProgress | null | undefined, taskId: string) => progress?.tasks.find((task) => task.taskId === taskId)?.completed ?? false;
+const calculateStudyHoursFromProgress = (routine: RoutineTask[], progress: DailyProgress | null | undefined) => {
   if (!progress) return 0;
   const minutes = routine.reduce((sum, task) => sum + (task.category === "study" && getTaskCompleted(progress, task.id) ? task.duration : 0), 0);
   return Math.round((minutes / 60) * 10) / 10;
