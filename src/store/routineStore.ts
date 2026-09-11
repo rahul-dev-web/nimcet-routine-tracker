@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   ROUTINE_SCHEMA_VERSION,
   buildRoutineForDay,
+  getLocalTimeMinutes,
   getTodayDateKey,
   isCollegeQuestionOpen,
 } from "@/lib/routineBuilder";
@@ -9,9 +10,9 @@ import {
 export interface RoutineTask {
   id: string;
   title: string;
-  startTime: string; // HH:mm format
-  endTime: string; // HH:mm format
-  duration: number; // in minutes
+  startTime: string;
+  endTime: string;
+  duration: number;
   order: number;
   completed: boolean;
   completedAt?: string;
@@ -34,8 +35,8 @@ export interface DailyProgress {
 
 export interface UserProfile {
   name: string;
-  wakeUpTime: string; // HH:mm
-  sleepTime: string; // HH:mm
+  wakeUpTime: string;
+  sleepTime: string;
   studyTargetHours: number;
   theme: "light" | "dark" | "system";
 }
@@ -74,10 +75,30 @@ interface RoutineState {
 
 const DEFAULT_PROFILE: UserProfile = {
   name: "Rahul",
-  wakeUpTime: "07:00",
+  wakeUpTime: "06:00",
   sleepTime: "23:30",
   studyTargetHours: 8,
   theme: "system",
+};
+
+const getTaskCompleted = (progress: DailyProgress | undefined, taskId: string) =>
+  progress?.tasks.find((task) => task.taskId === taskId)?.completed ?? false;
+
+const calculateStudyHoursFromProgress = (routine: RoutineTask[], progress: DailyProgress | undefined) => {
+  if (!progress) return 0;
+  const minutes = routine.reduce(
+    (sum, task) => sum + (task.category === "study" && getTaskCompleted(progress, task.id) ? task.duration : 0),
+    0
+  );
+  return Math.round((minutes / 60) * 10) / 10;
+};
+
+const isTaskCurrent = (task: RoutineTask, currentMinutes: number) => {
+  const [startH, startM] = task.startTime.split(":").map(Number);
+  const [endH, endM] = task.endTime.split(":").map(Number);
+  const start = startH * 60 + startM;
+  const end = endH * 60 + endM;
+  return end < start ? currentMinutes >= start || currentMinutes < end : currentMinutes >= start && currentMinutes < end;
 };
 
 export const useRoutineStore = create<RoutineState>((set, get) => ({
@@ -88,7 +109,11 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
   currentTime: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }),
 
   setProfile: (profile) => {
-    set({ profile });
+    const safeProfile: UserProfile = {
+      ...profile,
+      studyTargetHours: Math.min(16, Math.max(1, Number(profile.studyTargetHours) || DEFAULT_PROFILE.studyTargetHours)),
+    };
+    set({ profile: safeProfile });
     get().saveToLocalStorage();
   },
 
@@ -109,74 +134,51 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
   resolvePendingCollegePlans: () => {
     const today = getTodayDateKey();
     const plan = get().getDayPlan(today);
-    if (plan.college !== "pending") return;
-    if (isCollegeQuestionOpen()) return;
-
+    if (plan.college !== "pending" || isCollegeQuestionOpen()) return;
     set((state) => {
       const dailyPlans = new Map(state.dailyPlans);
-      dailyPlans.set(today, {
-        date: today,
-        college: "not_going",
-        autoDefaulted: true,
-        answeredAt: new Date().toISOString(),
-      });
+      dailyPlans.set(today, { date: today, college: "not_going", autoDefaulted: true, answeredAt: new Date().toISOString() });
       return { dailyPlans };
     });
     get().saveToLocalStorage();
   },
 
-  getDayPlan: (date) => {
-    return get().dailyPlans.get(date) ?? { date, college: "pending" };
-  },
+  getDayPlan: (date) => get().dailyPlans.get(date) ?? { date, college: "pending" },
 
   isGoingToCollege: (date) => {
-    get().resolvePendingCollegePlans();
+    if (date === getTodayDateKey()) get().resolvePendingCollegePlans();
     return get().getDayPlan(date).college === "going";
   },
 
   getRoutineForDate: (date) => {
-    get().resolvePendingCollegePlans();
-    const going = get().isGoingToCollege(date);
-    return buildRoutineForDay(date, going);
+    if (date === getTodayDateKey()) get().resolvePendingCollegePlans();
+    return buildRoutineForDay(date, get().isGoingToCollege(date), get().profile);
   },
 
-  updateCurrentTime: (time) => {
-    set({ currentTime: time });
-  },
+  updateCurrentTime: (time) => set({ currentTime: time }),
 
   toggleTaskCompletion: (taskId, date) => {
     const routine = get().getRoutineForDate(date);
-
     set((state) => {
-      const updatedProgress = new Map(state.dailyProgress);
-      const dayProgress = updatedProgress.get(date) || {
+      const dailyProgress = new Map(state.dailyProgress);
+      const previous = dailyProgress.get(date);
+      const tasks = routine.map((task) => previous?.tasks.find((item) => item.taskId === task.id) ?? { taskId: task.id, completed: false });
+      const index = tasks.findIndex((task) => task.taskId === taskId);
+      if (index === -1) return state;
+
+      const completed = !tasks[index].completed;
+      tasks[index] = { ...tasks[index], completed, completedAt: completed ? new Date().toISOString() : undefined };
+      const next: DailyProgress = {
         date,
-        completedTasks: 0,
         totalTasks: routine.length,
+        completedTasks: tasks.filter((task) => task.completed).length,
         studyHours: 0,
-        tasks: routine.map((t): DailyTaskProgress => ({ taskId: t.id, completed: false })),
+        tasks,
       };
-
-      if (dayProgress.totalTasks !== routine.length) {
-        dayProgress.totalTasks = routine.length;
-        dayProgress.tasks = routine.map((t) => {
-          const prev = dayProgress.tasks.find((p) => p.taskId === t.id);
-          return prev ?? { taskId: t.id, completed: false };
-        });
-      }
-
-      const taskIndex = dayProgress.tasks.findIndex((t) => t.taskId === taskId);
-      if (taskIndex !== -1) {
-        const taskProgress = dayProgress.tasks[taskIndex];
-        taskProgress.completed = !taskProgress.completed;
-        taskProgress.completedAt = taskProgress.completed ? new Date().toISOString() : undefined;
-        dayProgress.completedTasks = dayProgress.tasks.filter((t) => t.completed).length;
-      }
-
-      updatedProgress.set(date, dayProgress);
-      return { dailyProgress: updatedProgress };
+      next.studyHours = calculateStudyHoursFromProgress(routine, next);
+      dailyProgress.set(date, next);
+      return { dailyProgress };
     });
-
     get().saveToLocalStorage();
   },
 
@@ -184,98 +186,58 @@ export const useRoutineStore = create<RoutineState>((set, get) => ({
     const state = get();
     const targetDate = date ?? getTodayDateKey();
     const routine = state.getRoutineForDate(targetDate);
-
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    return (
-      routine.find((task) => {
-        const [startH, startM] = task.startTime.split(":").map(Number);
-        const [endH, endM] = task.endTime.split(":").map(Number);
-        const startMinutes = startH * 60 + startM;
-        const endMinutes = endH * 60 + endM;
-
-        if (endMinutes < startMinutes) {
-          return currentMinutes >= startMinutes || currentMinutes < endMinutes;
-        }
-
-        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-      }) || null
-    );
+    const currentMinutes = getLocalTimeMinutesFromString(state.currentTime);
+    const progress = state.getDailyProgress(targetDate);
+    return routine.find((task) => !getTaskCompleted(progress, task.id) && isTaskCurrent(task, currentMinutes)) ?? null;
   },
 
   getNextTask: (date) => {
-    const state = get();
     const targetDate = date ?? getTodayDateKey();
-    const routine = state.getRoutineForDate(targetDate);
-    const currentTask = state.getCurrentTask(targetDate);
-    if (!currentTask) return routine[0] || null;
-
-    const currentIndex = routine.findIndex((t) => t.id === currentTask.id);
-    return currentIndex !== -1 && currentIndex + 1 < routine.length ? routine[currentIndex + 1] : null;
+    const routine = get().getRoutineForDate(targetDate);
+    const progress = get().getDailyProgress(targetDate);
+    const current = get().getCurrentTask(targetDate);
+    const start = current ? routine.findIndex((task) => task.id === current.id) + 1 : 0;
+    return routine.slice(start).find((task) => !getTaskCompleted(progress, task.id)) ?? null;
   },
 
-  getDailyProgress: (date) => {
-    return get().dailyProgress.get(date) || null;
-  },
+  getDailyProgress: (date) => get().dailyProgress.get(date) || null,
 
-  calculateStudyHours: (date) => {
-    const state = get();
-    const dayProgress = state.dailyProgress.get(date);
-    if (!dayProgress) return 0;
-
-    const routine = state.getRoutineForDate(date);
-    let studyMinutes = 0;
-    routine.forEach((task) => {
-      if (task.category === "study") {
-        const taskProgress = dayProgress.tasks.find((t) => t.taskId === task.id);
-        if (taskProgress?.completed) {
-          studyMinutes += task.duration;
-        }
-      }
-    });
-
-    return Math.round((studyMinutes / 60) * 10) / 10;
-  },
+  calculateStudyHours: (date) => calculateStudyHoursFromProgress(get().getRoutineForDate(date), get().dailyProgress.get(date)),
 
   loadFromLocalStorage: () => {
     if (typeof window === "undefined") return;
-
     const stored = localStorage.getItem("routineStore");
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         const version = parsed.routineSchemaVersion ?? 1;
-
         set({
           profile: { ...DEFAULT_PROFILE, ...(parsed.profile || {}) },
-          routineSchemaVersion: version >= ROUTINE_SCHEMA_VERSION ? version : ROUTINE_SCHEMA_VERSION,
+          routineSchemaVersion: ROUTINE_SCHEMA_VERSION,
           dailyPlans: new Map(parsed.dailyPlans || []),
           dailyProgress: new Map(parsed.dailyProgress || []),
         });
-
-        if (version < ROUTINE_SCHEMA_VERSION) {
-          get().saveToLocalStorage();
-        }
+        if (version < ROUTINE_SCHEMA_VERSION) get().saveToLocalStorage();
       } catch {
         console.error("Failed to load from localStorage");
       }
     }
-
     get().resolvePendingCollegePlans();
   },
 
   saveToLocalStorage: () => {
     if (typeof window === "undefined") return;
-
     const state = get();
-    const toStore = {
+    localStorage.setItem("routineStore", JSON.stringify({
       routineSchemaVersion: ROUTINE_SCHEMA_VERSION,
       profile: state.profile,
       dailyPlans: Array.from(state.dailyPlans.entries()),
       dailyProgress: Array.from(state.dailyProgress.entries()),
-    };
-
-    localStorage.setItem("routineStore", JSON.stringify(toStore));
+    }));
   },
 }));
+
+function getLocalTimeMinutesFromString(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
