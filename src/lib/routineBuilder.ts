@@ -36,43 +36,27 @@ function chainSegments(segments: Segment[], startMinutes: number): RoutineTask[]
     const startTime = formatMinutes(cursor);
     cursor += segment.duration;
     const endTime = formatMinutes(cursor);
-    return {
-      id: segment.id,
-      title: segment.title,
-      startTime,
-      endTime,
-      duration: segment.duration,
-      order: index + 1,
-      completed: false,
-      category: segment.category,
-    };
+    return { id: segment.id, title: segment.title, startTime, endTime, duration: segment.duration, order: index + 1, completed: false, category: segment.category };
   });
 }
 
 function scaleStudySegments(segments: Segment[], targetHours: number): Segment[] {
   const study = segments.filter((segment) => segment.category === "study");
   if (!study.length) return segments;
-
   const targetMinutes = Math.max(60, Math.round(targetHours * 60));
   const currentMinutes = study.reduce((sum, segment) => sum + segment.duration, 0);
-  if (currentMinutes <= 0) return segments;
+  if (!currentMinutes) return segments;
 
   const scaled = new Map<string, number>();
   let assigned = 0;
   study.forEach((segment, index) => {
-    const isLast = index === study.length - 1;
-    const duration = isLast
+    const duration = index === study.length - 1
       ? Math.max(5, targetMinutes - assigned)
       : Math.max(5, Math.round((segment.duration / currentMinutes) * targetMinutes));
     scaled.set(segment.id, duration);
     assigned += duration;
   });
-
-  return segments.map((segment) =>
-    segment.category === "study"
-      ? { ...segment, duration: scaled.get(segment.id) ?? segment.duration }
-      : segment
-  );
+  return segments.map((segment) => segment.category === "study" ? { ...segment, duration: scaled.get(segment.id) ?? segment.duration } : segment);
 }
 
 function isWeekend(dateStr: string): boolean {
@@ -87,21 +71,20 @@ function minutesUntilNextTime(fromMinutes: number, targetTime: string): number {
 }
 
 function eveningSegments(profile: UserProfile, startMinutes: number): Segment[] {
-  const preSleep = [
-    { id: "dinner", title: "Dinner", duration: 30, category: "break" as const },
-    { id: "dev-projects", title: "Coding / development", duration: 90, category: "study" as const },
-    { id: "personal-projects", title: "Projects / building", duration: 45, category: "study" as const },
-    { id: "games", title: "Games / entertainment", duration: 30, category: "other" as const },
+  const preSleep: Segment[] = [
+    { id: "dinner", title: "Dinner", duration: 30, category: "break" },
+    { id: "dev-projects", title: "Coding / development", duration: 90, category: "study" },
+    { id: "personal-projects", title: "Projects / building", duration: 45, category: "study" },
+    { id: "games", title: "Games / entertainment", duration: 30, category: "other" },
   ];
   const preSleepEnd = startMinutes + preSleep.reduce((sum, segment) => sum + segment.duration, 0);
   const sleepDuration = Math.max(30, minutesUntilNextTime(preSleepEnd % (24 * 60), profile.sleepTime));
-  return [...preSleep, { id: "sleep", title: "Sleep", duration: sleepDuration, category: "other" as const }];
+  return [...preSleep, { id: "sleep", title: "Sleep", duration: sleepDuration, category: "other" }];
 }
 
 function homeStudySegments(dateStr: string): Segment[] {
   const weekend = isWeekend(dateStr);
   const questionFocus = weekend ? " (Question solving / PYQs)" : "";
-
   return [
     { id: "revision", title: `Revision (formulas + questions)${questionFocus}`, duration: 35, category: "study" },
     { id: "organize", title: `Organize notes + choose question sets${questionFocus}`, duration: 30, category: "study" },
@@ -138,8 +121,8 @@ export function buildCollegeDayRoutine(profile: UserProfile): RoutineTask[] {
     { id: "walk-relax", title: "Walk / relax", duration: 90, category: "break" },
     { id: "deep-study", title: "Deep study (weak topics)", duration: 120, category: "study" },
   ];
-
-  return chainSegments(scaleStudySegments([...segments, ...eveningSegments(profile, startMinutes)], profile.studyTargetHours), startMinutes);
+  const beforeEvening = segments.reduce((sum, segment) => sum + segment.duration, 0);
+  return chainSegments(scaleStudySegments([...segments, ...eveningSegments(profile, startMinutes + beforeEvening)], profile.studyTargetHours), startMinutes);
 }
 
 export function buildHomeDayRoutine(dateStr: string, profile: UserProfile): RoutineTask[] {
@@ -149,17 +132,15 @@ export function buildHomeDayRoutine(dateStr: string, profile: UserProfile): Rout
     { id: "morning-prep", title: "Breakfast, freshen up, ghar ke kaam", duration: 110, category: "other" },
     { id: "morning-chores", title: "Ghar ke kaam finish karna", duration: 30, category: "other" },
   ];
-
-  return chainSegments(scaleStudySegments([...morning, ...homeStudySegments(dateStr), ...eveningSegments(profile, startMinutes)], profile.studyTargetHours), startMinutes);
+  const beforeEvening = [...morning, ...homeStudySegments(dateStr)].reduce((sum, segment) => sum + segment.duration, 0);
+  return chainSegments(scaleStudySegments([...morning, ...homeStudySegments(dateStr), ...eveningSegments(profile, startMinutes + beforeEvening)], profile.studyTargetHours), startMinutes);
 }
 
 export function buildRoutineForDay(dateStr: string, goingToCollege: boolean, profile: UserProfile): RoutineTask[] {
   return goingToCollege ? buildCollegeDayRoutine(profile) : buildHomeDayRoutine(dateStr, profile);
 }
 
-export function getTodayDateKey(): string {
-  return formatDateKey();
-}
+export function getTodayDateKey(): string { return formatDateKey(); }
 
 export function isCollegeQuestionOpen(now = new Date()): boolean {
   return getLocalTimeMinutes(now) < parseTime(COLLEGE_QUESTION_DEADLINE);
