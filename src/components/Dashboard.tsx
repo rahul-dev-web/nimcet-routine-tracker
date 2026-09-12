@@ -24,7 +24,7 @@ export function Dashboard() {
   const calculateStudyHours = useRoutineStore((state) => state.calculateStudyHours);
   const dpps = useNimcetStore((state) => state.dpps);
   const dailyTopics = useNimcetStore((state) => state.dailyTopics);
-  const mocks = useNimcetStore((state) => state.assessments.filter((record) => record.type === "mock"));
+  const assessments = useNimcetStore((state) => state.assessments);
   const loadNimcet = useNimcetStore((state) => state.load);
 
   useEffect(() => {
@@ -54,6 +54,7 @@ export function Dashboard() {
       : "⏳ Subah 9 AM tak college ka jawab do";
   const todayDpp = dpps.find((record) => record.date === today);
   const todayTopics = dailyTopics[today]?.topicIds.length ?? 0;
+  const mocks = assessments.filter((record) => record.type === "mock");
   const latestMock = mocks.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
 
   return (
