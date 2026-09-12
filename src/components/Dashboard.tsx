@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRoutineStore } from "@/store/routineStore";
-import { Clock, TrendingUp } from "lucide-react";
+import { Clock, TrendingUp, Target } from "lucide-react";
 import { CollegePrompt } from "@/components/CollegePrompt";
 import { NimcetCountdown } from "@/components/NimcetCountdown";
 import { getTodayDateKey } from "@/lib/routineBuilder";
+import { accuracyOf } from "@/lib/nimcetTrackerMetrics";
+import { useNimcetStore } from "@/store/nimcetStore";
+import Link from "next/link";
 
 export function Dashboard() {
   const [time, setTime] = useState("");
@@ -19,6 +22,14 @@ export function Dashboard() {
   const routine = useRoutineStore((state) => state.getRoutineForDate(today));
   const dailyProgress = useRoutineStore((state) => state.getDailyProgress(today));
   const calculateStudyHours = useRoutineStore((state) => state.calculateStudyHours);
+  const dpps = useNimcetStore((state) => state.dpps);
+  const dailyTopics = useNimcetStore((state) => state.dailyTopics);
+  const mocks = useNimcetStore((state) => state.assessments.filter((record) => record.type === "mock"));
+  const loadNimcet = useNimcetStore((state) => state.load);
+
+  useEffect(() => {
+    loadNimcet();
+  }, [loadNimcet]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -41,6 +52,9 @@ export function Dashboard() {
     : dayPlan.college === "not_going"
       ? dayPlan.autoDefaulted ? "🏠 Ghar wala routine (9 AM ke baad auto-default)" : "🏠 Ghar pe padhai wala routine"
       : "⏳ Subah 9 AM tak college ka jawab do";
+  const todayDpp = dpps.find((record) => record.date === today);
+  const todayTopics = dailyTopics[today]?.topicIds.length ?? 0;
+  const latestMock = mocks.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
 
   return (
     <div className="space-y-6">
@@ -80,6 +94,15 @@ export function Dashboard() {
           <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2"><div className="bg-orange-400 h-full rounded-full" style={{ width: `${studyTargetPercent}%` }} /></div>
         </div>
       </div>
+
+      <section className="glass-effect rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm dark:border-slate-700 dark:bg-slate-950/95">
+        <div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold uppercase text-slate-800 dark:text-slate-300">🎯 NIMCET practice</p><p className="text-xs opacity-60">Preparation progress stays separate from routine task completion.</p></div><Link href="/nimcet" className="rounded-lg border px-3 py-2 text-sm font-semibold">Open tracker</Link></div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border p-4"><p className="text-xs opacity-60">Today’s topics</p><p className="mt-1 text-2xl font-bold">{todayTopics}</p></div>
+          <div className="rounded-xl border p-4"><p className="text-xs opacity-60">Today’s DPP</p><p className="mt-1 text-2xl font-bold">{todayDpp ? `${accuracyOf(todayDpp.correct, todayDpp.wrong)}%` : "Not done"}</p>{todayDpp && <p className="text-xs opacity-60">{todayDpp.correct}/{todayDpp.questionCount} correct</p>}</div>
+          <div className="rounded-xl border p-4"><p className="text-xs opacity-60">Latest unit mock</p><p className="mt-1 flex items-center gap-2 text-2xl font-bold"><Target size={22} />{latestMock ? `${accuracyOf(latestMock.correct, latestMock.wrong)}%` : "—"}</p>{latestMock && <p className="truncate text-xs opacity-60">{latestMock.unitTitle}</p>}</div>
+        </div>
+      </section>
 
       <div className="glass-effect p-6 rounded-2xl border border-slate-200 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 text-center shadow-sm"><p>{currentTask ? `🎯 You’re working on ${currentTask.title} right now` : "✅ No unfinished task is scheduled right now."}</p></div>
     </div>
