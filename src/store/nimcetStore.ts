@@ -77,7 +77,7 @@ interface NimcetState {
 }
 
 const STORAGE_KEY = "nimcetTracker";
-const VERSION = 2;
+const VERSION = 3;
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const clampCount = (value: number) => Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
 const topicMap = new Map(NIMCET_SYLLABUS.flatMap((subject) => subject.topics.map((topic) => [topic.id, subject.id] as const)));
@@ -96,11 +96,16 @@ function normalizeResult<T extends { questionCount: number; correct: number; wro
   };
 }
 
+function subjectIdsForTopics(topicIds: string[]): NimcetSubjectId[] {
+  return [...new Set(topicIds.map((id) => topicMap.get(id)).filter(Boolean))] as NimcetSubjectId[];
+}
+
 export const useNimcetStore = create<NimcetState>((set, get) => ({
   version: VERSION,
   dailyTopics: {},
   dpps: [],
   assessments: [],
+
   recordDailyTopics: (date, topicIds, note) => {
     set((state) => ({
       dailyTopics: {
@@ -115,95 +120,138 @@ export const useNimcetStore = create<NimcetState>((set, get) => ({
     }));
     get().persist();
   },
+
   saveDpp: (record) => {
     const normalized = normalizeResult({ ...record, topicIds: normalizeTopics(record.topicIds) });
     if (!normalized.topicIds.length || normalized.questionCount < 1 || !validateQuestionTotals(normalized)) return;
-    set((state) => ({
-      dpps: [...state.dpps, { ...normalized, id: makeId("dpp"), recordedAt: new Date().toISOString() }],
-    }));
+    const next: DppRecord = { ...normalized, id: makeId("dpp"), recordedAt: new Date().toISOString() };
+    set((state) => ({ dpps: [...state.dpps.filter((item) => item.date !== next.date), next] }));
     get().persist();
   },
+
   saveMock: (record) => {
     const normalized = normalizeResult({ ...record, topicIds: normalizeTopics(record.topicIds) });
     if (!normalized.unitTitle.trim() || !normalized.topicIds.length || normalized.questionCount < 1 || !validateQuestionTotals(normalized)) return;
-    const subjectIds = [...new Set(normalized.topicIds.map((id) => topicMap.get(id)).filter(Boolean))] as NimcetSubjectId[];
-    set((state) => ({
-      assessments: [
-        ...state.assessments,
-        { ...normalized, type: "mock", subjectIds, id: makeId("mock"), recordedAt: new Date().toISOString() },
-      ],
-    }));
+    const next: MockRecord = {
+      ...normalized,
+      type: "mock",
+      subjectIds: subjectIdsForTopics(normalized.topicIds),
+      id: makeId("mock"),
+      recordedAt: new Date().toISOString(),
+    };
+    set((state) => ({ assessments: [...state.assessments, next] }));
     get().persist();
   },
+
   savePyq: (record) => {
     const normalized = normalizeResult({ ...record, topicIds: normalizeTopics(record.topicIds) });
     if (!normalized.title.trim() || normalized.year < 2000 || normalized.questionCount < 1 || !validateQuestionTotals(normalized)) return;
-    const subjectIds = [...new Set(normalized.topicIds.map((id) => topicMap.get(id)).filter(Boolean))] as NimcetSubjectId[];
-    set((state) => ({
-      assessments: [
-        ...state.assessments,
-        { ...normalized, type: "pyq", subjectIds, id: makeId("pyq"), recordedAt: new Date().toISOString() },
-      ],
-    }));
+    const next: PyqRecord = {
+      ...normalized,
+      type: "pyq",
+      subjectIds: subjectIdsForTopics(normalized.topicIds),
+      id: makeId("pyq"),
+      recordedAt: new Date().toISOString(),
+    };
+    set((state) => ({ assessments: [...state.assessments, next] }));
     get().persist();
   },
+
   deleteDpp: (id) => {
     set((state) => ({ dpps: state.dpps.filter((item) => item.id !== id) }));
     get().persist();
   },
+
   deleteAssessment: (id) => {
     set((state) => ({ assessments: state.assessments.filter((item) => item.id !== id) }));
     get().persist();
   },
+
   load: () => {
     if (typeof window === "undefined") return;
     try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-      if (!parsed) return;
-      const legacyAssessments: unknown[] = Array.isArray(parsed.assessments) ? parsed.assessments : [];
-      const migratedAssessments: AssessmentRecord[] = legacyAssessments
-        .filter((item): item is Partial<MockRecord> | Partial<PyqRecord> => {
-          if (!item || typeof item !== "object") return false;
-          const type = (item as { type?: unknown }).type;
-          return type === "mock" || type === "pyq";
-        })
-        .map((item) => {
-          const common = {
-            ...item,
-            subjectIds: Array.isArray(item.subjectIds) ? item.subjectIds : [],
-            topicIds: normalizeTopics(Array.isArray(item.topicIds) ? item.topicIds : []),
-            questionCount: clampCount(item.questionCount ?? 0),
-            correct: clampCount(item.correct ?? 0),
-            wrong: clampCount(item.wrong ?? 0),
-            skipped: clampCount(item.skipped ?? 0),
-            completed: item.completed !== false,
-            recordedAt: item.recordedAt || new Date().toISOString(),
-          };
+      const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      if (!parsed || typeof parsed !== "object") return;
+      const data = parsed as Record<string, unknown>;
+      const rawAssessments = Array.isArray(data.assessments) ? data.assessments : [];
+      const migratedAssessments: AssessmentRecord[] = rawAssessments.flatMap((raw) => {
+        if (!raw || typeof raw !== "object") return [];
+        const item = raw as Record<string, unknown>;
+        const type = item.type;
+        const topicIds = normalizeTopics(Array.isArray(item.topicIds) ? item.topicIds.filter((id): id is string => typeof id === "string") : []);
+        const common = {
+          date: typeof item.date === "string" ? item.date : new Date().toISOString().slice(0, 10),
+          title: typeof item.title === "string" ? item.title : "Assessment",
+          subjectIds: subjectIdsForTopics(topicIds),
+          topicIds,
+          questionCount: clampCount(Number(item.questionCount)),
+          correct: clampCount(Number(item.correct)),
+          wrong: clampCount(Number(item.wrong)),
+          skipped: clampCount(Number(item.skipped)),
+          completed: item.completed !== false,
+          recordedAt: typeof item.recordedAt === "string" ? item.recordedAt : new Date().toISOString(),
+        };
 
-          if (item.type === "mock") {
-            return {
-              ...common,
-              type: "mock" as const,
-              unitTitle: item.unitTitle || item.title || "Unit",
-            } as MockRecord;
-          }
-
-          return {
+        if (type === "mock") {
+          const unitTitle = typeof item.unitTitle === "string" && item.unitTitle.trim() ? item.unitTitle : common.title;
+          return [{
             ...common,
-            type: "pyq" as const,
-            year: item.year || new Date().getFullYear(),
-          } as PyqRecord;
-        });
+            type: "mock",
+            unitTitle,
+            id: typeof item.id === "string" ? item.id : makeId("mock"),
+            ...(typeof item.durationMinutes === "number" ? { durationMinutes: item.durationMinutes } : {}),
+          } as MockRecord];
+        }
+
+        if (type === "pyq") {
+          const yearValue = Number(item.year);
+          return [{
+            ...common,
+            type: "pyq",
+            year: Number.isFinite(yearValue) && yearValue >= 2000 ? yearValue : new Date().getFullYear(),
+            paper: typeof item.paper === "string" ? item.paper : undefined,
+            id: typeof item.id === "string" ? item.id : makeId("pyq"),
+            ...(typeof item.durationMinutes === "number" ? { durationMinutes: item.durationMinutes } : {}),
+          } as PyqRecord];
+        }
+
+        return [];
+      });
+
+      const rawDpps = Array.isArray(data.dpps) ? data.dpps : [];
+      const dpps: DppRecord[] = rawDpps.flatMap((raw) => {
+        if (!raw || typeof raw !== "object") return [];
+        const item = raw as Record<string, unknown>;
+        const topicIds = normalizeTopics(Array.isArray(item.topicIds) ? item.topicIds.filter((id): id is string => typeof id === "string") : []);
+        const questionCount = clampCount(Number(item.questionCount));
+        const correct = clampCount(Number(item.correct));
+        const wrong = clampCount(Number(item.wrong));
+        const skipped = clampCount(Number(item.skipped));
+        if (!topicIds.length || questionCount < 1 || correct + wrong + skipped !== questionCount) return [];
+        return [{
+          id: typeof item.id === "string" ? item.id : makeId("dpp"),
+          date: typeof item.date === "string" ? item.date : new Date().toISOString().slice(0, 10),
+          topicIds,
+          questionCount,
+          correct,
+          wrong,
+          skipped,
+          completed: item.completed !== false,
+          recordedAt: typeof item.recordedAt === "string" ? item.recordedAt : new Date().toISOString(),
+        }];
+      });
+
       set({
         version: VERSION,
-        dailyTopics: parsed.dailyTopics ?? {},
-        dpps: Array.isArray(parsed.dpps) ? parsed.dpps : [],
+        dailyTopics: data.dailyTopics && typeof data.dailyTopics === "object" ? data.dailyTopics as Record<string, DailyTopicStudyRecord> : {},
+        dpps,
         assessments: migratedAssessments,
       });
     } catch {
       console.error("Failed to load NIMCET tracker data");
     }
   },
+
   persist: () => {
     if (typeof window === "undefined") return;
     const state = get();
