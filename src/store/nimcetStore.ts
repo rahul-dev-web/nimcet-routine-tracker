@@ -160,22 +160,40 @@ export const useNimcetStore = create<NimcetState>((set, get) => ({
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
       if (!parsed) return;
-      const legacyAssessments = Array.isArray(parsed.assessments) ? parsed.assessments : [];
+      const legacyAssessments: unknown[] = Array.isArray(parsed.assessments) ? parsed.assessments : [];
       const migratedAssessments: AssessmentRecord[] = legacyAssessments
-        .filter((item: Partial<AssessmentRecord>) => item.type === "mock" || item.type === "pyq")
-        .map((item: Partial<AssessmentRecord>) => ({
-          ...item,
-          type: item.type,
-          subjectIds: Array.isArray(item.subjectIds) ? item.subjectIds : [],
-          topicIds: normalizeTopics(Array.isArray(item.topicIds) ? item.topicIds : []),
-          questionCount: clampCount(item.questionCount ?? 0),
-          correct: clampCount(item.correct ?? 0),
-          wrong: clampCount(item.wrong ?? 0),
-          skipped: clampCount(item.skipped ?? 0),
-          completed: item.completed !== false,
-          recordedAt: item.recordedAt || new Date().toISOString(),
-          ...(item.type === "mock" ? { unitTitle: item.unitTitle || item.title || "Unit" } : { year: item.year || new Date().getFullYear() }),
-        })) as AssessmentRecord[];
+        .filter((item): item is Partial<MockRecord> | Partial<PyqRecord> => {
+          if (!item || typeof item !== "object") return false;
+          const type = (item as { type?: unknown }).type;
+          return type === "mock" || type === "pyq";
+        })
+        .map((item) => {
+          const common = {
+            ...item,
+            subjectIds: Array.isArray(item.subjectIds) ? item.subjectIds : [],
+            topicIds: normalizeTopics(Array.isArray(item.topicIds) ? item.topicIds : []),
+            questionCount: clampCount(item.questionCount ?? 0),
+            correct: clampCount(item.correct ?? 0),
+            wrong: clampCount(item.wrong ?? 0),
+            skipped: clampCount(item.skipped ?? 0),
+            completed: item.completed !== false,
+            recordedAt: item.recordedAt || new Date().toISOString(),
+          };
+
+          if (item.type === "mock") {
+            return {
+              ...common,
+              type: "mock" as const,
+              unitTitle: item.unitTitle || item.title || "Unit",
+            } as MockRecord;
+          }
+
+          return {
+            ...common,
+            type: "pyq" as const,
+            year: item.year || new Date().getFullYear(),
+          } as PyqRecord;
+        });
       set({
         version: VERSION,
         dailyTopics: parsed.dailyTopics ?? {},
