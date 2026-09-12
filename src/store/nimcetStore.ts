@@ -174,8 +174,8 @@ export const useNimcetStore = create<NimcetState>((set, get) => ({
       if (!parsed || typeof parsed !== "object") return;
       const data = parsed as Record<string, unknown>;
       const rawAssessments = Array.isArray(data.assessments) ? data.assessments : [];
-      const migratedAssessments: AssessmentRecord[] = rawAssessments.flatMap((raw) => {
-        if (!raw || typeof raw !== "object") return [];
+      const migratedAssessments = rawAssessments.reduce<AssessmentRecord[]>((records, raw) => {
+        if (!raw || typeof raw !== "object") return records;
         const item = raw as Record<string, unknown>;
         const type = item.type;
         const topicIds = normalizeTopics(Array.isArray(item.topicIds) ? item.topicIds.filter((id): id is string => typeof id === "string") : []);
@@ -194,29 +194,31 @@ export const useNimcetStore = create<NimcetState>((set, get) => ({
 
         if (type === "mock") {
           const unitTitle = typeof item.unitTitle === "string" && item.unitTitle.trim() ? item.unitTitle : common.title;
-          return [{
+          records.push({
             ...common,
             type: "mock",
             unitTitle,
             id: typeof item.id === "string" ? item.id : makeId("mock"),
             ...(typeof item.durationMinutes === "number" ? { durationMinutes: item.durationMinutes } : {}),
-          } as MockRecord];
+          });
+          return records;
         }
 
         if (type === "pyq") {
           const yearValue = Number(item.year);
-          return [{
+          records.push({
             ...common,
             type: "pyq",
             year: Number.isFinite(yearValue) && yearValue >= 2000 ? yearValue : new Date().getFullYear(),
             paper: typeof item.paper === "string" ? item.paper : undefined,
             id: typeof item.id === "string" ? item.id : makeId("pyq"),
             ...(typeof item.durationMinutes === "number" ? { durationMinutes: item.durationMinutes } : {}),
-          } as PyqRecord];
+          });
+          return records;
         }
 
-        return [];
-      });
+        return records;
+      }, []);
 
       const rawDpps = Array.isArray(data.dpps) ? data.dpps : [];
       const dpps: DppRecord[] = rawDpps.flatMap((raw) => {
