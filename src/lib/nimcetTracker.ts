@@ -1,8 +1,6 @@
 import type { NimcetSubjectId } from "./nimcetSyllabus";
 
 export type PreparationStatus = "not_started" | "learning" | "revision" | "strong";
-
-export type QuestionSource = "practice" | "pyq" | "mock";
 export type QuestionResult = "correct" | "wrong" | "skipped";
 export type MistakeReason =
   | "concept_gap"
@@ -13,6 +11,7 @@ export type MistakeReason =
   | "guess"
   | "other";
 
+/** Topic-level progress is derived from aggregate DPP/mock data; DPP never stores individual questions. */
 export interface TopicProgress {
   topicId: string;
   subjectId: NimcetSubjectId;
@@ -25,21 +24,22 @@ export interface TopicProgress {
   updatedAt: string;
 }
 
+/** Reserved for a future question-bank feature. It is intentionally not used by the DPP workflow. */
 export interface QuestionAttempt {
   id: string;
   subjectId: NimcetSubjectId;
   topicId: string;
-  source: QuestionSource;
   result: QuestionResult;
+  attemptedAt: string;
   timeSeconds?: number;
   mistakeReason?: MistakeReason;
-  attemptedAt: string;
   note?: string;
 }
 
 export interface PyqRecord {
   id: string;
   year: number;
+  paper?: string;
   attemptedQuestions: number;
   correctQuestions: number;
   wrongQuestions: number;
@@ -52,12 +52,12 @@ export interface PyqRecord {
 export interface MockTestRecord {
   id: string;
   title: string;
+  unitTitle: string;
+  topicIds: string[];
   attemptedQuestions: number;
   correctQuestions: number;
   wrongQuestions: number;
   skippedQuestions: number;
-  score?: number;
-  maxScore?: number;
   durationMinutes?: number;
   completedAt: string;
 }
