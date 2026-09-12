@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { NIMCET_SYLLABUS } from "@/lib/nimcetSyllabus";
 import { accuracyOf, resultTotal, validateQuestionTotals } from "@/lib/nimcetTrackerMetrics";
 import { useNimcetStore } from "@/store/nimcetStore";
@@ -49,11 +49,11 @@ export default function NimcetPage() {
     setDurationMinutes(0);
   };
 
-  const toggleTopic = (setter: React.Dispatch<React.SetStateAction<string[]>>, id: string, checked: boolean) => {
+  const toggleTopic = (setter: Dispatch<SetStateAction<string[]>>, id: string, checked: boolean) => {
     setter((current) => checked ? [...new Set([...current, id])] : current.filter((item) => item !== id));
   };
 
-  const handleNumber = (setter: React.Dispatch<React.SetStateAction<number>>) => (event: ChangeEvent<HTMLInputElement>) => {
+  const handleNumber = (setter: Dispatch<SetStateAction<number>>) => (event: ChangeEvent<HTMLInputElement>) => {
     setter(Math.max(0, Math.floor(Number(event.target.value) || 0)));
   };
 
